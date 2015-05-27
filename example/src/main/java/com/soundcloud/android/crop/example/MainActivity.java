@@ -1,15 +1,16 @@
 package com.soundcloud.android.crop.example;
 
-import com.soundcloud.android.crop.Crop;
-
 import android.app.Activity;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.MediaStore;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ImageView;
 import android.widget.Toast;
+
+import com.soundcloud.android.crop.Crop;
 
 import java.io.File;
 
@@ -36,13 +37,27 @@ public class MainActivity extends Activity {
             resultView.setImageDrawable(null);
             Crop.pickImage(this);
             return true;
+        } else if (item.getItemId() == R.id.action_take) {
+            resultView.setImageDrawable(null);
+
+//            Uri destination = Uri.fromFile(new File(getFilesDir(), "raw"));
+            Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+//            cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, destination);
+
+            startActivityForResult(cameraIntent, TAKE_NEW_AVATAR_CAMERA);
         }
+
         return super.onOptionsItemSelected(item);
     }
+
+    private static final int TAKE_NEW_AVATAR_CAMERA = 1000;
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent result) {
         if (requestCode == Crop.REQUEST_PICK && resultCode == RESULT_OK) {
+            beginCrop(result.getData());
+        } else if (requestCode == TAKE_NEW_AVATAR_CAMERA && resultCode == RESULT_OK) {
+//            Uri destination = Uri.fromFile(new File(getFilesDir(), "raw"));
             beginCrop(result.getData());
         } else if (requestCode == Crop.REQUEST_CROP) {
             handleCrop(resultCode, result);

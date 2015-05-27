@@ -59,7 +59,7 @@ public class CropImageActivity extends MonitoredActivity {
 
     private boolean isSaving;
 
-    private int sampleSize;
+    private int mSampleSize;
     private RotateBitmap rotateBitmap;
     private CropImageView imageView;
     private HighlightView cropView;
@@ -122,11 +122,9 @@ public class CropImageActivity extends MonitoredActivity {
 
             InputStream is = null;
             try {
-                sampleSize = calculateBitmapSampleSize(sourceUri);
                 is = getContentResolver().openInputStream(sourceUri);
-                BitmapFactory.Options option = new BitmapFactory.Options();
-                option.inSampleSize = sampleSize;
-                rotateBitmap = new RotateBitmap(BitmapFactory.decodeStream(is, null, option), exifRotation);
+                int maxSize = getMaxImageSize();
+                rotateBitmap = new RotateBitmap(decodeSampledBitmapFromResourceMemOpt(is, maxSize, maxSize), exifRotation);
             } catch (IOException e) {
                 Log.e("Error reading image: " + e.getMessage(), e);
                 setResultException(e);
@@ -155,6 +153,7 @@ public class CropImageActivity extends MonitoredActivity {
         while (options.outHeight / sampleSize > maxSize || options.outWidth / sampleSize > maxSize) {
             sampleSize = sampleSize << 1;
         }
+
         return sampleSize;
     }
 
@@ -257,7 +256,7 @@ public class CropImageActivity extends MonitoredActivity {
         isSaving = true;
 
         Bitmap croppedImage;
-        Rect r = cropView.getScaledCropRect(sampleSize);
+        Rect r = cropView.getScaledCropRect(mSampleSize);
         int width = r.width();
         int height = r.height();
 
@@ -277,6 +276,7 @@ public class CropImageActivity extends MonitoredActivity {
         try {
             croppedImage = decodeRegionCrop(r, outWidth, outHeight);
         } catch (IllegalArgumentException e) {
+            e.printStackTrace();
             setResultException(e);
             finish();
             return;
@@ -331,7 +331,9 @@ public class CropImageActivity extends MonitoredActivity {
             }
 
             try {
-                croppedImage = decoder.decodeRegion(rect, new BitmapFactory.Options());
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inSampleSize = mSampleSize;
+                croppedImage = decoder.decodeRegion(rect, options);
                 if (rect.width() > outWidth || rect.height() > outHeight) {
                     Matrix matrix = new Matrix();
                     matrix.postScale((float) outWidth / rect.width(), (float) outHeight / rect.height());
@@ -395,6 +397,69 @@ public class CropImageActivity extends MonitoredActivity {
         });
 
         finish();
+    }
+
+    public Bitmap decodeSampledBitmapFromResourceMemOpt(
+            InputStream inputStream, int reqWidth, int reqHeight) {
+
+        byte[] byteArr = new byte[0];
+        byte[] buffer = new byte[1024];
+        int len;
+        int count = 0;
+
+        try {
+            while ((len = inputStream.read(buffer)) > -1) {
+                if (len != 0) {
+                    if (count + len > byteArr.length) {
+                        byte[] newBuffer = new byte[(count + len) * 2];
+                        System.arraycopy(byteArr, 0, newBuffer, 0, count);
+                        byteArr = newBuffer;
+                    }
+
+                    System.arraycopy(buffer, 0, byteArr, count, len);
+                    count += len;
+                }
+            }
+
+            final BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            BitmapFactory.decodeByteArray(byteArr, 0, count, options);
+
+            options.inSampleSize = calculateInSampleSize(options, reqWidth,
+                    reqHeight);
+            options.inPurgeable = true;
+            options.inInputShareable = true;
+            options.inJustDecodeBounds = false;
+            options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+
+            mSampleSize = options.inSampleSize;
+
+            return BitmapFactory.decodeByteArray(byteArr, 0, count, options);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        // Raw height and width of image
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+
+            // Calculate ratios of height and width to requested height and width
+            final int heightRatio = Math.round((float) height / (float) reqHeight);
+            final int widthRatio = Math.round((float) width / (float) reqWidth);
+
+            // Choose the smallest ratio as inSampleSize value, this will guarantee
+            // a final image with both dimensions larger than or equal to the
+            // requested height and width.
+            inSampleSize = heightRatio < widthRatio ? heightRatio : widthRatio;
+        }
+
+        return inSampleSize;
     }
 
     @Override
