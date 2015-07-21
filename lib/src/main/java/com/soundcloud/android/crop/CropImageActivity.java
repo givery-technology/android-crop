@@ -59,7 +59,7 @@ public class CropImageActivity extends MonitoredActivity {
 
     private boolean isSaving;
 
-    private int mSampleSize;
+    private int sampleSize;
     private RotateBitmap rotateBitmap;
     private CropImageView imageView;
     private HighlightView cropView;
@@ -256,7 +256,7 @@ public class CropImageActivity extends MonitoredActivity {
         isSaving = true;
 
         Bitmap croppedImage;
-        Rect r = cropView.getScaledCropRect(mSampleSize);
+        Rect r = cropView.getScaledCropRect(sampleSize);
         int width = r.width();
         int height = r.height();
 
@@ -332,7 +332,7 @@ public class CropImageActivity extends MonitoredActivity {
 
             try {
                 BitmapFactory.Options options = new BitmapFactory.Options();
-                options.inSampleSize = mSampleSize;
+                options.inSampleSize = sampleSize;
                 croppedImage = decoder.decodeRegion(rect, options);
                 if (rect.width() > outWidth || rect.height() > outHeight) {
                     Matrix matrix = new Matrix();
@@ -432,7 +432,7 @@ public class CropImageActivity extends MonitoredActivity {
             options.inJustDecodeBounds = false;
             options.inPreferredConfig = Bitmap.Config.ARGB_8888;
 
-            mSampleSize = options.inSampleSize;
+            sampleSize = options.inSampleSize;
 
             return BitmapFactory.decodeByteArray(byteArr, 0, count, options);
         } catch (Exception e) {
