@@ -344,7 +344,7 @@ public class CropImageActivity extends MonitoredActivity {
                 throw new IllegalArgumentException("Rectangle " + rect + " is outside of the image ("
                         + width + "," + height + "," + exifRotation + ")", e);
             }
-
+            decoder.recycle();
         } catch (IOException e) {
             Log.e("Error cropping image: " + e.getMessage(), e);
             finish();
